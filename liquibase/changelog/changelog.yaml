@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: rennorb
+      changes:
+        - createTable:
+            tableName: bank_data
+            columns:
+              - column:
+                  name: total
+                  type: INT

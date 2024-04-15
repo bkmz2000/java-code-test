@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: java_code_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d java_code_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  liquibase:
+    image: liquibase/liquibase
+    volumes:
+      - ./liquibase:/liquibase/changelog
+    entrypoint: /bin/bash
+    command: 
+      - -c
+      - exec liquibase --changeLogFile=changelog/changelog/changelog.yaml --url=jdbc:postgresql://postgres:5432/java_code_test --username=postgres --password=password update
+    depends_on:
+      postgres:
+        condition: service_healthy
+  backend:
+    image: golang:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/backend
+    depends_on:
+      - postgres
+      - liquibase
+    command: sh -c "cd /backend/backend && go build -o main && ./main"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: java_code_test
+
+  test:
+    image: golang:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/backend
+    depends_on:
+      - postgres
+      - liquibase
+    command: sh -c "cd /backend/backend && go test"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: java_code_test
